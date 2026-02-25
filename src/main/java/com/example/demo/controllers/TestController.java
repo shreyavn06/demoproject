@@ -57,4 +57,10 @@ public class TestController {
             return new ResponseEntity<>("Bulk emails sent successfully", HttpStatus.OK);
 
     }
+    @PostMapping("/sendPdf")
+    public ResponseEntity<Object> sendPdf(@RequestBody TestDto testDto) {
+
+        emailAccessor.sendPdfMail(testDto.getEmail());
+        return new ResponseEntity<>("PDF Sent Successfully", HttpStatus.OK);
+    }
 }

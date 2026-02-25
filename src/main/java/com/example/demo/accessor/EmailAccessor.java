@@ -1,15 +1,26 @@
 package com.example.demo.accessor;
 
+import com.itextpdf.kernel.events.PdfDocumentEvent;
+import com.itextpdf.kernel.pdf.canvas.draw.SolidLine;
+import com.itextpdf.layout.element.LineSeparator;
+import com.itextpdf.layout.properties.TextAlignment;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import com.itextpdf.kernel.pdf.*;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Paragraph;
+import org.springframework.core.io.ByteArrayResource;
+import java.io.ByteArrayOutputStream;
+import com.example.demo.pdf.ProperLetterHeadHandler;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -83,6 +94,59 @@ public class EmailAccessor {
 
         } catch (Exception e) {
             log.error("Error sending to: {}", email, e);
+        }
+    }
+    private byte[] generateLetterHeadPdf() {
+
+        try {
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+            PdfWriter writer = new PdfWriter(outputStream);
+            PdfDocument pdf = new PdfDocument(writer);
+
+
+            pdf.addEventHandler(PdfDocumentEvent.END_PAGE, new ProperLetterHeadHandler());
+            Document document = new Document(pdf);
+
+
+            document.setMargins(120, 36, 100, 36);
+
+
+            document.add(new Paragraph(""));
+
+            document.close();
+
+            return outputStream.toByteArray();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error generating PDF", e);
+        }
+    }
+
+    public void sendPdfMail(String toEmail) {
+
+        try {
+
+            byte[] pdfBytes = generateLetterHeadPdf();
+
+            MimeMessage message = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+
+            helper.setTo(toEmail);
+            helper.setSubject("Letterhead PDF");
+            helper.setText("Please find the attached PDF.", true);
+            helper.setFrom(SENDER);
+
+            helper.addAttachment("LetterHead.pdf",
+                    new ByteArrayResource(pdfBytes));
+
+            javaMailSender.send(message);
+
+            log.info("PDF mail sent to {}", toEmail);
+
+        } catch (Exception e) {
+            log.error("Error sending PDF mail", e);
         }
     }
 }
