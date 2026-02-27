@@ -1,37 +1,35 @@
 package com.example.demo.accessor;
 
+import com.example.demo.events.BulkMailEvent;
+import com.example.demo.pdf.ProperLetterHeadHandler;
 import com.itextpdf.kernel.events.PdfDocumentEvent;
-import com.itextpdf.kernel.pdf.canvas.draw.SolidLine;
-import com.itextpdf.layout.element.LineSeparator;
-import com.itextpdf.layout.properties.TextAlignment;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Paragraph;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
-import com.itextpdf.kernel.pdf.*;
-import com.itextpdf.layout.Document;
-import com.itextpdf.layout.element.Paragraph;
-import org.springframework.core.io.ByteArrayResource;
-import java.io.ByteArrayOutputStream;
-import com.example.demo.pdf.ProperLetterHeadHandler;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.S3Client;
 
+import java.io.ByteArrayOutputStream;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
 public class EmailAccessor {
 
     @Autowired
-    private ExecutorService mailExecutor;
+    private S3Client s3Client;
 
     @Autowired
     private JavaMailSender javaMailSender;
@@ -39,10 +37,13 @@ public class EmailAccessor {
     @Autowired
     private TemplateEngine templateEngine;
 
-    private static final String SENDER = "bulkmail1@catchyou.online";
+    @Autowired
+    private ApplicationEventPublisher publisher;
+
+    private static final String SENDER = "shreya.settyvn@gmail.com";
     private static final String OTP_TEMPLATE = "hello";
 
-    // Existing single email method
+
     public void sendEmail(String toEmail) throws MessagingException {
 
         Context context = new Context();
@@ -52,7 +53,7 @@ public class EmailAccessor {
         MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
         helper.setTo(toEmail);
-        helper.setSubject("A sample text");
+        helper.setSubject("Single Mail");
         helper.setText(htmlContent, true);
         helper.setFrom(SENDER);
 
@@ -60,42 +61,11 @@ public class EmailAccessor {
     }
 
 
-
     public void sendBulkEmails(List<String> emails) {
-        AtomicInteger counter = new AtomicInteger(1);
-
-        emails.forEach(email ->
-                mailExecutor.submit(() ->
-                        sendSingleEmail(email, counter.getAndIncrement())
-                )
-        );
+        publisher.publishEvent(new BulkMailEvent(emails));
     }
 
-    private void sendSingleEmail(String email, int count) {
 
-        try {
-
-            Context context = new Context();
-            context.setVariable("count", count);
-
-            String htmlContent = templateEngine.process(OTP_TEMPLATE, context);
-
-            MimeMessage message = javaMailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true);
-
-            helper.setTo(email);
-            helper.setSubject("Email " + count + " sent");
-            helper.setText(htmlContent, true);
-            helper.setFrom(SENDER);
-
-            javaMailSender.send(message);
-
-            log.info("Email sent to: {}", email);
-
-        } catch (Exception e) {
-            log.error("Error sending to: {}", email, e);
-        }
-    }
     private byte[] generateLetterHeadPdf() {
 
         try {
@@ -105,13 +75,16 @@ public class EmailAccessor {
             PdfWriter writer = new PdfWriter(outputStream);
             PdfDocument pdf = new PdfDocument(writer);
 
+            byte[] logoBytes = getLogoFromS3();
 
-            pdf.addEventHandler(PdfDocumentEvent.END_PAGE, new ProperLetterHeadHandler());
+            pdf.addEventHandler(
+                    PdfDocumentEvent.END_PAGE,
+                    new ProperLetterHeadHandler(logoBytes)
+            );
+
+
             Document document = new Document(pdf);
-
-
             document.setMargins(120, 36, 100, 36);
-
 
             document.add(new Paragraph(""));
 
@@ -142,6 +115,7 @@ public class EmailAccessor {
                     new ByteArrayResource(pdfBytes));
 
             javaMailSender.send(message);
+            System.out.println("MAIL SENT SUCCESSFULLY TO SMTP SERVER");
 
             log.info("PDF mail sent to {}", toEmail);
 
@@ -149,5 +123,20 @@ public class EmailAccessor {
             log.error("Error sending PDF mail", e);
         }
     }
-}
 
+    public byte[] getLogoFromS3() {
+
+        try {
+
+            GetObjectRequest request = GetObjectRequest.builder()
+                    .bucket("rizzle-shreya")
+                    .key("logo.png")
+                    .build();
+
+            return s3Client.getObject(request).readAllBytes();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch logo from S3", e);
+        }
+    }
+}

@@ -63,4 +63,10 @@ public class TestController {
         emailAccessor.sendPdfMail(testDto.getEmail());
         return new ResponseEntity<>("PDF Sent Successfully", HttpStatus.OK);
     }
+
+    @GetMapping("/testS3")
+    public ResponseEntity<String> testS3() {
+        emailAccessor.getLogoFromS3();
+        return ResponseEntity.ok("S3 Fetch Successful");
+    }
 }
