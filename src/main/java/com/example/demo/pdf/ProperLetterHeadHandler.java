@@ -40,7 +40,7 @@ public class ProperLetterHeadHandler implements IEventHandler {
         float top = pageSize.getTop();
         float bottom = pageSize.getBottom();
 
-        // 🔹 Add Logo (Left side of header)
+
         if (logoBytes != null) {
             Image logo = new Image(ImageDataFactory.create(logoBytes));
             logo.scaleToFit(60, 60);
@@ -48,7 +48,7 @@ public class ProperLetterHeadHandler implements IEventHandler {
             canvas.add(logo);
         }
 
-        // 🔹 Company Name
+
         canvas.showTextAligned(
                 new Paragraph("RIZZLE TECHNOLOGY PRIVATE LIMITED")
                         .setBold()
@@ -58,7 +58,7 @@ public class ProperLetterHeadHandler implements IEventHandler {
                 TextAlignment.CENTER
         );
 
-        // 🔹 CIN
+      
         canvas.showTextAligned(
                 new Paragraph("CIN No: U72900AP2019PTC110174"),
                 width / 2 + 20,
@@ -66,7 +66,7 @@ public class ProperLetterHeadHandler implements IEventHandler {
                 TextAlignment.CENTER
         );
 
-        // 🔹 Contact
+      
         canvas.showTextAligned(
                 new Paragraph("Contact No: +91-9087817126 | tech@rizzle.in"),
                 width / 2 + 20,
@@ -74,17 +74,17 @@ public class ProperLetterHeadHandler implements IEventHandler {
                 TextAlignment.CENTER
         );
 
-        // 🔹 Line below header
+   
         pdfCanvas.moveTo(40, top - 95);
         pdfCanvas.lineTo(width - 40, top - 95);
         pdfCanvas.stroke();
 
-        // 🔹 Line above footer
+       
         pdfCanvas.moveTo(40, bottom + 60);
         pdfCanvas.lineTo(width - 40, bottom + 60);
         pdfCanvas.stroke();
 
-        // 🔹 Footer Text
+     
         canvas.showTextAligned(
                 new Paragraph("11th Floor, Innov8 Prestige Tech Platina,"),
                 width / 2,
